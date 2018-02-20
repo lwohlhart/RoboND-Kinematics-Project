@@ -156,20 +156,19 @@ def test_code(test_case):
     len_B = sqrt(tri_fwd * tri_fwd + tri_up * tri_up)
     len_C = dh_params[a2]
 
-    theta2 = (pi/2).evalf() - acos((len_B*len_B + len_C*len_C - len_A*len_A)/(2*len_B*len_C)) - atan2(tri_up, tri_fwd)
-    theta3 = acos((len_A*len_A + len_C*len_C - len_B*len_B)/(2*len_A*len_C)) - (pi/2).evalf()
+    theta2 = atan2(tri_fwd, tri_up) - acos((len_B*len_B + len_C*len_C - len_A*len_A)/(2*len_B*len_C))
+    theta3 = pi/2 - acos((len_A*len_A + len_C*len_C - len_B*len_B)/(2*len_A*len_C)) + atan2(dh_params[a3], dh_params[d4])
 
-    R0_3 = T0_3[0:3,0:3]
-    R0_3 = R0_3.subs({q1:theta1, q2:theta2, q3: theta3})
+    R0_3 = T0_1[0:3,0:3]*T1_2[0:3,0:3]*T2_3[0:3,0:3]
+    R0_3 = R0_3.evalf(subs={q1:theta1, q2:theta2, q3: theta3})
     R3_6 = R0_3.inv("LU") * Rrpy
 
     # attempt 1
-    theta4 = atan2(R3_6[1,2], R3_6[0,2])
-    theta5 = atan2(sqrt(R3_6[0,2] * R3_6[0,2] + R3_6[1,2] * R3_6[1,2] ), R3_6[2,2])
-    theta6 = atan2(R3_6[2,1], -R3_6[2,0])
-
-    print(simplify(T3_4*T4_5*T5_6)[0:3,0:3])
-    print(theta1, theta2, theta3, theta4, theta5, theta6)
+    theta4 = atan2(R3_6[2,2], -R3_6[0,2])
+    theta5 = atan2(sqrt(R3_6[0,2] * R3_6[0,2] + R3_6[2,2] * R3_6[2,2] ), R3_6[2,2])
+    #theta5 = (acos(R3_6[1,2])) # unstable but more accurate alternative
+    #print(theta5)
+    theta6 = atan2(-R3_6[1,1], R3_6[1,0])    
     ## 
     ########################################################################################
     
@@ -186,10 +185,9 @@ def test_code(test_case):
     #your_wc = [wx,wy,wz] # <--- Load your calculated WC values in this array
     #your_ee = [1,1,1] # <--- Load your calculated end effector value from your forward kinematics
     ########################################################################################
-    print(T0_3.evalf(subs={q1:theta1, q2: theta2, q3:-0.36, q4:theta4, q4: theta5, q6: theta6}))
-    print(T0_3.evalf(subs={q1:theta1, q2: theta2, q3:-0.36, q4:theta4, q4: theta5, q6: theta6})[3,:])
-    your_wc = T0_3.evalf(subs={q1:theta1, q2: theta2, q3:-0.36, q4:theta4, q4: theta5, q6: theta6})[3,:]
-    your_ee = T0_6.evalf(subs={q1:theta1, q2: theta2, q3:-0.36, q4:theta4, q4: theta5, q6: theta6})[3,:]
+        
+    your_wc = T0_4.evalf(subs={q1:theta1, q2: theta2, q3:theta3, q4:theta4, q5: theta5, q6: theta6})[:3,3]
+    your_ee = T0_G.evalf(subs={q1:theta1, q2: theta2, q3:theta3, q4:theta4, q5: theta5, q6: theta6})[:3,3]    
 
     ## Error analysis
     print ("\nTotal run time to calculate joint angles from pose is %04.4f seconds" % (time()-start_time))
@@ -242,3 +240,5 @@ if __name__ == "__main__":
     test_case_number = 1
 
     test_code(test_cases[test_case_number])
+    test_code(test_cases[2])
+    test_code(test_cases[3])
