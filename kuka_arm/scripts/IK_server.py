@@ -61,9 +61,9 @@ T0_3 = T0_2 * T2_3
 T0_4 = T0_3 * T3_4
 T0_5 = T0_4 * T4_5
 T0_6 = T0_5 * T5_6
-T0_G = T0_6 * T6_G
+T0_G = simplify(T0_6 * T6_G)
 
-R0_3 = T0_1[0:3,0:3]*T1_2[0:3,0:3]*T2_3[0:3,0:3]
+R0_3 = simplify(T0_1[0:3,0:3]*T1_2[0:3,0:3]*T2_3[0:3,0:3])
 
 def Rot_X(angle):
     return rot_axis1(angle).transpose()
@@ -74,7 +74,13 @@ def Rot_Y(angle):
 def Rot_Z(angle):
     return rot_axis3(angle).transpose()
             
-R_corr = simplify(Rot_Z(pi) * Rot_Y(-pi/2))
+#R_corr = simplify(Rot_Z(pi) * Rot_Y(-pi/2))
+
+# simpler non parametric version
+R_corr = Matrix([[0,  0, 1],
+                 [0, -1, 0],
+                 [1,  0, 0]])
+
 
 class JointsOption:
     LIMITS = [[-3.23, 3.23],[-0.79, 1.48], [-3.67, 1.13], [-6.11, 6.11], [-2.18, 2.18], [-6.11, 6.11]]
@@ -112,25 +118,37 @@ class JointsOption:
         wc_z_e = abs(fk_wc[2]-wc[2])
         return sqrt(wc_x_e**2 + wc_y_e**2 + wc_z_e**2)
 
-    def ee_error(self, ee):
-        fk_ee = T0_G.evalf(subs={q1:self.theta1, q2:self.theta2, q3:self.theta3, q4:self.theta4, q5:self.theta5, q6:self.theta6})[:3,3]
+    def ee_pos(self, local_T0_G=None):
+        if local_T0_G:
+            return local_T0_G[:3,3]
+        else:                
+            return T0_G.evalf(subs={q1:self.theta1, q2:self.theta2, q3:self.theta3, q4:self.theta4, q5:self.theta5, q6:self.theta6})[:3,3]
+
+    def ee_orientation(self, local_T0_G=None):
+        corr = Matrix.eye(4)
+        corr[:3,:3] = R_corr
+        if local_T0_G:
+            rot_mat = local_T0_G
+        else:
+            rot_mat = T0_G.evalf(subs={q1:self.theta1, q2:self.theta2, q3:self.theta3, q4:self.theta4, q5:self.theta5, q6:self.theta6})
+        rot_mat = rot_mat * corr        
+        return tf.transformations.quaternion_from_matrix(rot_mat.tolist())
+
+    def ee_error(self, ee, local_T0_G=None):
+        fk_ee = self.ee_pos(local_T0_G)
         ee_x_e = abs(fk_ee[0]-ee[0])
         ee_y_e = abs(fk_ee[1]-ee[1])
         ee_z_e = abs(fk_ee[2]-ee[2])
         return sqrt(ee_x_e**2 + ee_y_e**2 + ee_z_e**2)
 
-    def orientation_error(self, orientation):        
-        corr = Matrix.eye(4)
-        corr[:3,:3] = R_corr
-        rot_mat = T0_G.evalf(subs={q1:self.theta1, q2:self.theta2, q3:self.theta3, q4:self.theta4, q5:self.theta5, q6:self.theta6})
-        rot_mat = rot_mat * corr
-        fk_orientation = tf.transformations.quaternion_from_matrix(rot_mat.tolist())
-        err = np.linalg.norm(fk_orientation - np.array([orientation.x, orientation.y, orientation.z, orientation.w]))
-        return err
+    def orientation_error(self, orientation, local_T0_G=None):                
+        fk_orientation = self.ee_orientation(local_T0_G)
+        err = np.linalg.norm(fk_orientation - np.array([orientation.x, orientation.y, orientation.z, orientation.w]))        
+        return err    
 
-    def fk_error(self, wc, ee, orientation):
-
-        return self.wc_error(wc) + self.ee_error(ee) + self.orientation_error(orientation)
+    def fk_error(self, ee, orientation, wc=None):    
+        local_T0_G = T0_G.evalf(subs={q1:self.theta1, q2:self.theta2, q3:self.theta3, q4:self.theta4, q5:self.theta5, q6:self.theta6})            
+        return self.ee_error(ee, local_T0_G) + self.orientation_error(orientation, local_T0_G) #+ self.wc_error(wc)        
 
 
     def check_valid(self):
@@ -185,6 +203,8 @@ def handle_calculate_IK(req):
             px = req.poses[x].position.x
             py = req.poses[x].position.y
             pz = req.poses[x].position.z
+            print([px, py, pz])
+            print([req.poses[x].orientation.x, req.poses[x].orientation.y, req.poses[x].orientation.z, req.poses[x].orientation.w])
 
             (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(
                 [req.poses[x].orientation.x, req.poses[x].orientation.y,
@@ -205,15 +225,15 @@ def handle_calculate_IK(req):
             ###
             joints = []
             joints.append(JointsOption())
-            joints.append(JointsOption())
+            # joints.append(JointsOption())
             joints[0].theta1 = atan2(wy, wx)
-            joints[1].theta1 = atan2(-wy,-wx) # 2nd_alternative    
+            # joints[1].theta1 = atan2(-wy,-wx) # 2nd_alternative    
 
             # Calculate theta2 and theta3 from triangle spanned by joint2, joint3 and wrist-center
             joints[0].wx_tilde = sqrt(wx * wx + wy * wy) - dh_params[a1] # 1st_alternative
             joints[0].wz_tilde = wz - dh_params[d1]
-            joints[1].wx_tilde = -sqrt(wx * wx + wy * wy) - dh_params[a1] # 2nd_alternative
-            joints[1].wz_tilde = wz - dh_params[d1]
+            # joints[1].wx_tilde = -sqrt(wx * wx + wy * wy) - dh_params[a1] # 2nd_alternative
+            # joints[1].wz_tilde = wz - dh_params[d1]
 
             joints = [j for j in joints if j.check_valid()]
 
@@ -240,12 +260,19 @@ def handle_calculate_IK(req):
             joints_alt = []
             for j in joints:        
                 R0_3_current = R0_3.evalf(subs={q1:j.theta1, q2:j.theta2, q3: j.theta3})
-                R3_6 = R0_3_current.inv("LU") * Rrpy
+                #R3_6 = R0_3_current.inv("LU") * Rrpy
+                R3_6 = R0_3_current.T * Rrpy
 
                 # R3_6(q4, q5, q6) structure:
+                # [r00, r01, r02]
+                # [r10, r11, r12]
+                # [r20, r21, r22]
+                #
                 #[[-sin(q4)*sin(q6) + cos(q4)*cos(q5)*cos(q6), -sin(q4)*cos(q6) - sin(q6)*cos(q4)*cos(q5), -sin(q5)*cos(q4)],
                 # [                           sin(q5)*cos(q6),                           -sin(q5)*sin(q6),          cos(q5)],
                 # [-sin(q4)*cos(q5)*cos(q6) - sin(q6)*cos(q4),  sin(q4)*sin(q6)*cos(q5) - cos(q4)*cos(q6),  sin(q4)*sin(q5)]]
+                #
+                # theta = atan2(sin(theta), cos(theta))
                 
                 j.theta4 = atan2(R3_6[2,2], -R3_6[0,2])
                 j.theta5 = atan2(sqrt(R3_6[0,2] * R3_6[0,2] + R3_6[2,2] * R3_6[2,2] ), R3_6[2,2])
@@ -255,29 +282,29 @@ def handle_calculate_IK(req):
                 j_alt.theta5 = (acos(R3_6[1,2])) # ambiguous but numerically more accurate alternative
                 joints_alt.append(j_alt)
 
-                # j_alt = j.clone()
-                # j_alt.theta6 = atan2(R3_6[1,1], -R3_6[1,0])
-                # joints_alt.append(j_alt)
+                j_alt = j.clone()
+                j_alt.theta6 = atan2(R3_6[1,1], -R3_6[1,0])
+                joints_alt.append(j_alt)
 
-                # j_alt = j.clone()        
-                # j_alt.theta4 = atan2(-R3_6[2,2], R3_6[0,2])
-                # joints_alt.append(j_alt)
+                j_alt = j.clone()        
+                j_alt.theta4 = atan2(-R3_6[2,2], R3_6[0,2])
+                joints_alt.append(j_alt)
 
-                # j_alt = j.clone()        
-                # j_alt.theta4 = atan2(-R3_6[2,2], R3_6[0,2])
-                # j_alt.theta6 = atan2(R3_6[1,1], -R3_6[1,0])
-                # joints_alt.append(j_alt)        
+                j_alt = j.clone()        
+                j_alt.theta4 = atan2(-R3_6[2,2], R3_6[0,2])
+                j_alt.theta6 = atan2(R3_6[1,1], -R3_6[1,0])
+                joints_alt.append(j_alt)        
 
 
             joints = [j for j in (joints + joints_alt) if j.check_valid()]
             # for j in joints:
             #     j.debug_print()
-            #     print(j.fk_error([wx, wy, wz], [px, py, pz], req.poses[x].orientation))
+            #     print(j.fk_error([px, py, pz], req.poses[x].orientation))
 
             # print(len(joints))
-            joints = sorted(joints, key = lambda j: j.fk_error([wx, wy, wz], [px, py, pz], req.poses[x].orientation))
+            joints = sorted(joints, key = lambda j: j.fk_error([px, py, pz], req.poses[x].orientation))
             (theta1, theta2, theta3, theta4, theta5, theta6) = joints[0].thetas()
-
+            joints[0].debug_print()
             # Populate response for the IK request
             # In the next line replace theta1,theta2...,theta6 by your joint angle variables
             joint_trajectory_point.positions = [theta1, theta2, theta3, theta4, theta5, theta6]
