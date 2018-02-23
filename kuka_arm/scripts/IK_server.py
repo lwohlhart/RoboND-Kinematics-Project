@@ -36,19 +36,19 @@ dh_params = {
     alpha6:     0, a6:      0, d7: 0.303, q7: 0 }
 
 
-def dh_transform(alpha, a, theta, d):
-    return Matrix([[           cos(theta),           -sin(theta),           0,             a],
-                   [sin(theta)*cos(alpha), cos(theta)*cos(alpha), -sin(alpha), -sin(alpha)*d],
-                   [sin(theta)*sin(alpha), cos(theta)*sin(alpha),  cos(alpha),  cos(alpha)*d],
-                   [                    0,                     0,           0,             1]])
+# def dh_transform(alpha, a, theta, d):
+#     return Matrix([[           cos(theta),           -sin(theta),           0,             a],
+#                    [sin(theta)*cos(alpha), cos(theta)*cos(alpha), -sin(alpha), -sin(alpha)*d],
+#                    [sin(theta)*sin(alpha), cos(theta)*sin(alpha),  cos(alpha),  cos(alpha)*d],
+#                    [                    0,                     0,           0,             1]])
 
-T0_1 = dh_transform(alpha0, a0, q1, d1).subs(dh_params)
-T1_2 = dh_transform(alpha1, a1, q2, d2).subs(dh_params)
-T2_3 = dh_transform(alpha2, a2, q3, d3).subs(dh_params)
-T3_4 = dh_transform(alpha3, a3, q4, d4).subs(dh_params)
-T4_5 = dh_transform(alpha4, a4, q5, d5).subs(dh_params)
-T5_6 = dh_transform(alpha5, a5, q6, d6).subs(dh_params)
-T6_G = dh_transform(alpha6, a6, q7, d7).subs(dh_params)
+# T0_1 = dh_transform(alpha0, a0, q1, d1).subs(dh_params)
+# T1_2 = dh_transform(alpha1, a1, q2, d2).subs(dh_params)
+# T2_3 = dh_transform(alpha2, a2, q3, d3).subs(dh_params)
+# T3_4 = dh_transform(alpha3, a3, q4, d4).subs(dh_params)
+# T4_5 = dh_transform(alpha4, a4, q5, d5).subs(dh_params)
+# T5_6 = dh_transform(alpha5, a5, q6, d6).subs(dh_params)
+# T6_G = dh_transform(alpha6, a6, q7, d7).subs(dh_params)
 
 # T0_2 = simplify(T0_1 * T1_2)
 # T0_3 = simplify(T0_2 * T2_3)
@@ -56,14 +56,30 @@ T6_G = dh_transform(alpha6, a6, q7, d7).subs(dh_params)
 # T0_5 = simplify(T0_4 * T4_5)
 # T0_6 = simplify(T0_5 * T5_6)
 # T0_G = simplify(T0_6 * T6_G)
-T0_2 = T0_1 * T1_2
-T0_3 = T0_2 * T2_3
-T0_4 = T0_3 * T3_4
-T0_5 = T0_4 * T4_5
-T0_6 = T0_5 * T5_6
-T0_G = simplify(T0_6 * T6_G)
+# T0_2 = T0_1 * T1_2
+# T0_3 = T0_2 * T2_3
+# T0_4 = T0_3 * T3_4
+# T0_5 = T0_4 * T4_5
+# T0_6 = T0_5 * T5_6
+# T0_G = simplify(T0_6 * T6_G)
 
-R0_3 = simplify(T0_1[0:3,0:3]*T1_2[0:3,0:3]*T2_3[0:3,0:3])
+# numpy version of the simplified T0_G
+def np_T0_G(q1, q2, q3, q4, q5, q6):
+  (q1, q2, q3, q4, q5, q6) = (float(q1), float(q2), float(q3), float(q4), float(q5), float(q6))
+  return np.array([
+    [((np.sin(q1)*np.sin(q4) + np.sin(q2 + q3)*np.cos(q1)*np.cos(q4))*np.cos(q5) + np.sin(q5)*np.cos(q1)*np.cos(q2 + q3))*np.cos(q6) - (-np.sin(q1)*np.cos(q4) + np.sin(q4)*np.sin(q2 + q3)*np.cos(q1))*np.sin(q6), -((np.sin(q1)*np.sin(q4) + np.sin(q2 + q3)*np.cos(q1)*np.cos(q4))*np.cos(q5) + np.sin(q5)*np.cos(q1)*np.cos(q2 + q3))*np.sin(q6) + (np.sin(q1)*np.cos(q4) - np.sin(q4)*np.sin(q2 + q3)*np.cos(q1))*np.cos(q6), -(np.sin(q1)*np.sin(q4) + np.sin(q2 + q3)*np.cos(q1)*np.cos(q4))*np.sin(q5) + np.cos(q1)*np.cos(q5)*np.cos(q2 + q3), -0.303*np.sin(q1)*np.sin(q4)*np.sin(q5) + 1.25*np.sin(q2)*np.cos(q1) - 0.303*np.sin(q5)*np.sin(q2 + q3)*np.cos(q1)*np.cos(q4) - 0.054*np.sin(q2 + q3)*np.cos(q1) + 0.303*np.cos(q1)*np.cos(q5)*np.cos(q2 + q3) + 1.5*np.cos(q1)*np.cos(q2 + q3) + 0.35*np.cos(q1)],
+    [ ((np.sin(q1)*np.sin(q2 + q3)*np.cos(q4) - np.sin(q4)*np.cos(q1))*np.cos(q5) + np.sin(q1)*np.sin(q5)*np.cos(q2 + q3))*np.cos(q6) - (np.sin(q1)*np.sin(q4)*np.sin(q2 + q3) + np.cos(q1)*np.cos(q4))*np.sin(q6), -((np.sin(q1)*np.sin(q2 + q3)*np.cos(q4) - np.sin(q4)*np.cos(q1))*np.cos(q5) + np.sin(q1)*np.sin(q5)*np.cos(q2 + q3))*np.sin(q6) - (np.sin(q1)*np.sin(q4)*np.sin(q2 + q3) + np.cos(q1)*np.cos(q4))*np.cos(q6), -(np.sin(q1)*np.sin(q2 + q3)*np.cos(q4) - np.sin(q4)*np.cos(q1))*np.sin(q5) + np.sin(q1)*np.cos(q5)*np.cos(q2 + q3),  1.25*np.sin(q1)*np.sin(q2) - 0.303*np.sin(q1)*np.sin(q5)*np.sin(q2 + q3)*np.cos(q4) - 0.054*np.sin(q1)*np.sin(q2 + q3) + 0.303*np.sin(q1)*np.cos(q5)*np.cos(q2 + q3) + 1.5*np.sin(q1)*np.cos(q2 + q3) + 0.35*np.sin(q1) + 0.303*np.sin(q4)*np.sin(q5)*np.cos(q1)],
+    [                                                                -(np.sin(q5)*np.sin(q2 + q3) - np.cos(q4)*np.cos(q5)*np.cos(q2 + q3))*np.cos(q6) - np.sin(q4)*np.sin(q6)*np.cos(q2 + q3),                                                     (np.sin(q5)*np.sin(q2 + q3) - np.cos(q4)*np.cos(q5)*np.cos(q2 + q3))*np.sin(q6) - np.sin(q4)*np.cos(q6)*np.cos(q2 + q3),           -np.sin(q5)*np.cos(q4)*np.cos(q2 + q3) - np.sin(q2 + q3)*np.cos(q5),                                                                                 -0.303*np.sin(q5)*np.cos(q4)*np.cos(q2 + q3) - 0.303*np.sin(q2 + q3)*np.cos(q5) - 1.5*np.sin(q2 + q3) + 1.25*np.cos(q2) - 0.054*np.cos(q2 + q3) + 0.75],
+    [                                                                                                                                                            0,                                                                                                                                                0,                                                              0,                                                                                                  1]])
+
+# R0_3 = simplify(T0_1[0:3,0:3]*T1_2[0:3,0:3]*T2_3[0:3,0:3])
+# numpy version of the simplified R0_3
+def np_R0_3(q1, q2, q3):
+  (q1, q2, q3) = (float(q1), float(q2), float(q3))
+  return np.array([[np.sin(q2 + q3)*np.cos(q1), np.cos(q1)*np.cos(q2 + q3), -np.sin(q1)],
+                   [np.sin(q1)*np.sin(q2 + q3), np.sin(q1)*np.cos(q2 + q3),  np.cos(q1)],
+                   [        np.cos(q2 + q3),        -np.sin(q2 + q3),        0]])
+
 
 def Rot_X(angle):
     return rot_axis1(angle).transpose()
@@ -77,9 +93,9 @@ def Rot_Z(angle):
 #R_corr = simplify(Rot_Z(pi) * Rot_Y(-pi/2))
 
 # simpler non parametric version
-R_corr = Matrix([[0,  0, 1],
-                 [0, -1, 0],
-                 [1,  0, 0]])
+R_corr = np.array([[0,  0, 1],
+                  [0, -1, 0],
+                  [1,  0, 0]])
 
 
 class JointsOption:
@@ -111,26 +127,26 @@ class JointsOption:
     def thetas(self):
         return (self.theta1, self.theta2, self.theta3, self.theta4, self.theta5, self.theta6)
 
-    def wc_error(self, wc):
-        fk_wc = T0_4.evalf(subs={q1:self.theta1, q2:self.theta2, q3:self.theta3, q4:self.theta4, q5:self.theta5, q6:self.theta6})[:3,3]
-        wc_x_e = abs(fk_wc[0]-wc[0])
-        wc_y_e = abs(fk_wc[1]-wc[1])
-        wc_z_e = abs(fk_wc[2]-wc[2])
-        return sqrt(wc_x_e**2 + wc_y_e**2 + wc_z_e**2)
+    # def wc_error(self, wc):
+    #     fk_wc = T0_4.evalf(subs={q1:self.theta1, q2:self.theta2, q3:self.theta3, q4:self.theta4, q5:self.theta5, q6:self.theta6})[:3,3]
+    #     wc_x_e = abs(fk_wc[0]-wc[0])
+    #     wc_y_e = abs(fk_wc[1]-wc[1])
+    #     wc_z_e = abs(fk_wc[2]-wc[2])
+    #     return sqrt(wc_x_e**2 + wc_y_e**2 + wc_z_e**2)
 
     def ee_pos(self, local_T0_G=None):
-        if local_T0_G:
+        if local_T0_G is not None:
             return local_T0_G[:3,3]
         else:                
-            return T0_G.evalf(subs={q1:self.theta1, q2:self.theta2, q3:self.theta3, q4:self.theta4, q5:self.theta5, q6:self.theta6})[:3,3]
+            return np_T0_G(self.theta1, self.theta2, self.theta3, self.theta4, self.theta5, self.theta6)[:3,3]
 
     def ee_orientation(self, local_T0_G=None):
         corr = Matrix.eye(4)
         corr[:3,:3] = R_corr
-        if local_T0_G:
+        if local_T0_G is not None:
             rot_mat = local_T0_G
         else:
-            rot_mat = T0_G.evalf(subs={q1:self.theta1, q2:self.theta2, q3:self.theta3, q4:self.theta4, q5:self.theta5, q6:self.theta6})
+            rot_mat = np_T0_G(self.theta1, self.theta2, self.theta3, self.theta4, self.theta5, self.theta6)
         rot_mat = rot_mat * corr        
         return tf.transformations.quaternion_from_matrix(rot_mat.tolist())
 
@@ -143,11 +159,11 @@ class JointsOption:
 
     def orientation_error(self, orientation, local_T0_G=None):                
         fk_orientation = self.ee_orientation(local_T0_G)
-        err = np.linalg.norm(fk_orientation - np.array([orientation.x, orientation.y, orientation.z, orientation.w]))        
-        return err    
+        err = np.linalg.norm(fk_orientation - np.array([orientation.x, orientation.y, orientation.z, orientation.w]))
+        return err
 
     def fk_error(self, ee, orientation, wc=None):    
-        local_T0_G = T0_G.evalf(subs={q1:self.theta1, q2:self.theta2, q3:self.theta3, q4:self.theta4, q5:self.theta5, q6:self.theta6})            
+        local_T0_G = np_T0_G(self.theta1, self.theta2, self.theta3, self.theta4, self.theta5, self.theta6)
         return self.ee_error(ee, local_T0_G) + self.orientation_error(orientation, local_T0_G) #+ self.wc_error(wc)        
 
 
@@ -259,7 +275,8 @@ def handle_calculate_IK(req):
             joints = [j for j in (joints + joints_alt) if j.check_valid()]
             joints_alt = []
             for j in joints:        
-                R0_3_current = R0_3.evalf(subs={q1:j.theta1, q2:j.theta2, q3: j.theta3})
+                R0_3_current = np_R0_3(j.theta1, j.theta2,  j.theta3)
+                # R0_3_current = R0_3.evalf(subs={q1:j.theta1, q2:j.theta2, q3: j.theta3})
                 #R3_6 = R0_3_current.inv("LU") * Rrpy
                 R3_6 = R0_3_current.T * Rrpy
 
