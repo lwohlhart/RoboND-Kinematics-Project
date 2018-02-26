@@ -64,6 +64,7 @@ Theta 6 (~30°) rotation from X5 to X6 about Z6
 By determining which relative offset definition between the joints in the urdf file corresponds to the respective DH-parameter we end up with the following tables.
 
 URDF relative offsets
+
 Joint | x | y | z 
 --- | --- | --- | --- 
 J1 | 0 | 0 | 0.33  
@@ -75,6 +76,7 @@ J6 | 0.193 | 0 | 0
 Jgripper | 0.11 | 0 | 0
 
 Corresponding DH-parameters (composing the distances)
+
 Links | alpha(i-1) | a(i-1) | d(i) | theta(i)
 --- | --- | --- | --- | ---
 0->1 | 0 | 0 | J1.z + J2.z  | q1
