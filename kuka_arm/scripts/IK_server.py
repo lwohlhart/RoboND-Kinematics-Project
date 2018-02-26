@@ -219,8 +219,8 @@ def handle_calculate_IK(req):
             px = req.poses[x].position.x
             py = req.poses[x].position.y
             pz = req.poses[x].position.z
-            print([px, py, pz])
-            print([req.poses[x].orientation.x, req.poses[x].orientation.y, req.poses[x].orientation.z, req.poses[x].orientation.w])
+            #print([px, py, pz])
+            #print([req.poses[x].orientation.x, req.poses[x].orientation.y, req.poses[x].orientation.z, req.poses[x].orientation.w])
 
             (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(
                 [req.poses[x].orientation.x, req.poses[x].orientation.y,
@@ -245,7 +245,6 @@ def handle_calculate_IK(req):
             joints[0].theta1 = atan2(wy, wx)
             # joints[1].theta1 = atan2(-wy,-wx) # 2nd_alternative    
 
-            # Calculate theta2 and theta3 from triangle spanned by joint2, joint3 and wrist-center
             joints[0].wx_tilde = sqrt(wx * wx + wy * wy) - dh_params[a1] # 1st_alternative
             joints[0].wz_tilde = wz - dh_params[d1]
             # joints[1].wx_tilde = -sqrt(wx * wx + wy * wy) - dh_params[a1] # 2nd_alternative
@@ -256,6 +255,7 @@ def handle_calculate_IK(req):
             joints_alt = []
             for j in joints:
 
+                # Calculate theta2 and theta3 from triangle spanned by joint2, joint3 and wrist-center
                 len_A = sqrt(dh_params[d4] * dh_params[d4] + dh_params[a3] * dh_params[a3])
                 len_B = sqrt(j.wx_tilde * j.wx_tilde + j.wz_tilde * j.wz_tilde)
                 len_C = dh_params[a2]
@@ -274,10 +274,13 @@ def handle_calculate_IK(req):
 
             joints = [j for j in (joints + joints_alt) if j.check_valid()]
             joints_alt = []
-            for j in joints:        
-                R0_3_current = np_R0_3(j.theta1, j.theta2,  j.theta3)
+            for j in joints:
+                # Calculate theta 4, 5, 6 by coefficient comparison with the 
+                # remaining rotation matrix R3_6
+
                 # R0_3_current = R0_3.evalf(subs={q1:j.theta1, q2:j.theta2, q3: j.theta3})
-                #R3_6 = R0_3_current.inv("LU") * Rrpy
+                # R3_6 = R0_3_current.inv("LU") * Rrpy
+                R0_3_current = np_R0_3(j.theta1, j.theta2,  j.theta3)
                 R3_6 = R0_3_current.T * Rrpy
 
                 # R3_6(q4, q5, q6) structure:
@@ -319,11 +322,11 @@ def handle_calculate_IK(req):
             #     print(j.fk_error([px, py, pz], req.poses[x].orientation))
 
             # print(len(joints))
+            # sort options by minimal endeffector position and orientation error
             joints = sorted(joints, key = lambda j: j.fk_error([px, py, pz], req.poses[x].orientation))
             (theta1, theta2, theta3, theta4, theta5, theta6) = joints[0].thetas()
-            joints[0].debug_print()
+            # joints[0].debug_print()
             # Populate response for the IK request
-            # In the next line replace theta1,theta2...,theta6 by your joint angle variables
             joint_trajectory_point.positions = [theta1, theta2, theta3, theta4, theta5, theta6]
             joint_trajectory_list.append(joint_trajectory_point)
 

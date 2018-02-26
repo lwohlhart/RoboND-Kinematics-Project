@@ -170,15 +170,27 @@ One solution is for example:
 Another solution set for the angles can be found using:
 
 ![](./misc_images/theta456_2.png)
+
+This concludes the majority of the solutions for the Kuka KR210's inverse kinematics of a specific pose.
+
 ### Project Implementation
 
-#### 1. Fill in the `IK_server.py` file with properly commented python code for calculating Inverse Kinematics based on previously performed Kinematic Analysis. Your code must guide the robot to successfully complete 8/10 pick and place cycles. Briefly discuss the code you implemented and your results. 
+Using the provided template in kuka_arm/scripts/IK_server.py I implemented a ROS service which calculates the inverse kinematics proposals for a given set of desired poses.  
+
+During the startup of the service, the DH parameters, the corresponding forward kinematics and the Gazebo rotation correction matrix are prepared.
+
+The callback handler handle_calculate_IK is then waiting to receive request containing a list of poses to determine the respective rotation angles for.
+
+The calculation of the inverse kinematics is implemented as described in the previous section. This yields multiple solutions for the angles of the revolute joints. The established class JointsOptions holds one instantiation of these options and can be used to determine if it's a valid solution, i.e. the proposed angles are within the limits of each joint and pose is within reach of the robot.
+Additionally it can calculate the resulting error with respect to the final position and orientation of the end effector using the set of angles.
+
+For each incoming pose all possible and valid solutions are calculated and sorted by the resulting error in the forward kinematics. The solution with the lowest error is picked and passed back to the service caller.
+
+The following video demonstrates a sequence of pick and place tasks using the IK_server to calculate the Kuka KR210's trajectories picking and disposing cans from a shelve into a bin.
+[![](./misc_images/yt_demo_thumb.png)](https://www.youtube.com/watch?v=8nUhI27P51M)
+
+![](./misc_images/pick_and_place_complete.png)
 
 
-Here I'll talk about the code, what techniques I used, what worked and why, where the implementation might fail and how I might improve it if I were going to pursue this project further.  
-
-
-And just for fun, another example image:
-<!-- ![alt text][image3] -->
 
 
