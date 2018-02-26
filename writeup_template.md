@@ -109,7 +109,7 @@ This yields the following transformation matrix:
 By chaining together the adjacent frame transformation matrices we end up with a transformation between the base-link and the end-effector
 ![dh-chain](./misc_images/dh-chain.png)
 
-To account for the rotational mismatch between the urdf description and the forward kinematics described by the DH-parameters we have to rotate around Z by 180° and Y by -90°.
+To account for the rotational mismatch between the gazebo model of the urdf description and the forward kinematics described by the DH-parameters we have to rotate around Z by 180° and Y by -90°.
 ![tf-correction](./misc_images/tf-correction.png)
 
 #### Forward Kinematics implementation
@@ -121,8 +121,10 @@ The code calculating the forward kinematics of the Kuka KR210 is implemented in 
 The fact that the last three revolute joints of the Kuka KR210 have the same origin and form a spherical "wrist" joint allows us to decouple the calculation into solving for the position kinematics of the wrist center and the orientation kinematics of the end effector separately.
 
 First we have to determine the position of the wrist center. This is done by taking the desired position of the end-effector and subtracting a vector with the required orientation scaled to the euclidean distance between the wrist center and the gripper.
-For the orientation of the aforementioned vector I first decompose the quaternion representation of the desired pose into the corresponding roll, pitch and yaw values. These values are then used to generate an extrinsic rotation matrix which gets multiplied by the previously described rotational correction matrix to account for the orientation difference between the DH parameters and the urdf description. The z-component of the resulting matrix is then a unit-vector pointing into the desired direction. Multiplying it by the distance from the wrist to the end-effector and subtracting it from the target gripper position yields the position of the wrist center for this task.
+For the orientation of the aforementioned vector I first decompose the quaternion representation of the desired pose into the corresponding roll, pitch and yaw values. These values are then used to generate an extrinsic rotation matrix which gets multiplied by the previously described rotational correction matrix to account for the orientation difference between the DH parameters and the gazebo model. The z-component of the resulting matrix is then a unit-vector pointing into the desired direction. Multiplying it by the distance from the wrist to the end-effector and subtracting it from the target gripper position yields the position of the wrist center for this task.
 
+
+#### Solving position kinematics
 Having determined the wrist center we can solve the position kinematics using the first three rotation angles of the Kuka KR210.
 
 For theta 1 there are two possible solutions which, we either turn the arm towards or away from the position of the wrist center.
@@ -142,14 +144,32 @@ To determine alpha and beta:
 ![](./misc_images/alpha_beta_triangle.png)
 Using the DH-parameters table to determine beta-prime which is caused by the offset of Joint4:
 ![](./misc_images/beta_prime.png)
+
 We get the following two possible solutions for the angles theta2 and theta3.
 ![](./misc_images/theta2_3_equations.png)
 
 
+#### Solving rotation kinematics
+
+Once we have determined the angles for the first three revolute joints, we can calculate the resulting orientation up to the wrist using the forward kinematics described previously. This yields the rotation matrix R0_3 that can further be used to compute the rest of the rotation pipeline R3_6 by left multiplying the inverse of it.
+![](./misc_images/R36_rpose.png) 
+
+Luckily the rotation matrices are orthgonal matrices which means that the inverse is simply the transpose of the matrix.
+
+![](./misc_images/R36_rpose_transpose.png) 
+
+This let's us compute the numerical solution for the transformation from frame 3 to 6 which can than be compared to the analytical solution of the transformation which has the following form.
+
 ![](./misc_images/R3_6_structure.png)
 ![](./misc_images/R3_6_structure_min.png)
+By comparing the coefficient we can derive multiple ways of computing the angles theta4, theta5 and theta6.
 
+One solution is for example:
+![](./misc_images/theta456_1.png) 
 
+Another solution set for the angles can be found using:
+
+![](./misc_images/theta456_2.png)
 ### Project Implementation
 
 #### 1. Fill in the `IK_server.py` file with properly commented python code for calculating Inverse Kinematics based on previously performed Kinematic Analysis. Your code must guide the robot to successfully complete 8/10 pick and place cycles. Briefly discuss the code you implemented and your results. 
