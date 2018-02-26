@@ -1,39 +1,9 @@
 ## Project: Kinematics Pick & Place
 ---
-**Steps to complete the project:**  
 
-
-1. Set up your ROS Workspace.
-2. Download or clone the [project repository](https://github.com/udacity/RoboND-Kinematics-Project) into the ***src*** directory of your ROS Workspace.  
-3. Experiment with the forward_kinematics environment and get familiar with the robot.
-4. Launch in [demo mode](https://classroom.udacity.com/nanodegrees/nd209/parts/7b2fd2d7-e181-401e-977a-6158c77bf816/modules/8855de3f-2897-46c3-a805-628b5ecf045b/lessons/91d017b1-4493-4522-ad52-04a74a01094c/concepts/ae64bb91-e8c4-44c9-adbe-798e8f688193).
-5. Perform Kinematic Analysis for the robot following the [project rubric](https://review.udacity.com/#!/rubrics/972/view).
-6. Fill in the `IK_server.py` with your Inverse Kinematics code. 
-
-
-[//]: # (Image References)
-
-[image1]: ./misc_images/misc1.png
-[image2]: ./misc_images/misc3.png
-[image3]: ./misc_images/misc2.png
-[image1]: ./misc_images/misc1.png
 [robotschematic]: ./misc_images/robot-schematic.png
 
-
-## [Rubric](https://review.udacity.com/#!/rubrics/972/view) Points
-### Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
-
----
-### Writeup / README
-
-#### 1. Provide a Writeup / README that includes all the rubric points and how you addressed each one.  You can submit your writeup as markdown or pdf.  
-
-
-
-
 ### Kinematic Analysis
-#### 1. Run the forward_kinematics demo and evaluate the kr210.urdf.xacro file to perform kinematic analysis of Kuka KR210 robot and derive its DH parameters.
-
 To establish an analysis of the Kuka KR210's forward kinematic  I looked at the geometric urdf description in the kr210.urdf.xacro file. The Denavit-Hartenberg parameters for the 6-DOF serial manipulator are chosen according to the convention proposed by Craig, JJ. (2005). Introduction to Robotics. The following schematic depicts the distances and rotation angles between the resultung frame origins.
 
 ![kinematic analysis kuka kr210][robotschematic]
@@ -50,12 +20,15 @@ Theta 3 (~10°) rotation from X2 to X3 about Z3
 ![theta2 + 3](./misc_images/theta2_3.png)
 
 Theta 4 (~30°) rotation from X3 to X4 about Z4
+
 ![theta4](./misc_images/theta4.png)
 
 Theta 5 (~45°) rotation from X4 to X5 about Z5
+
 ![theta5](./misc_images/theta5.png)
 
 Theta 6 (~30°) rotation from X5 to X6 about Z6
+
 ![theta6](./misc_images/theta6.png)
 
 
@@ -89,7 +62,7 @@ Links | alpha(i-1) | a(i-1) | d(i) | theta(i)
 
 
 
-#### 2. Using the DH parameter table you derived earlier, create individual transformation matrices about each joint. In addition, also generate a generalized homogeneous transform between base_link and gripper_link using only end-effector(gripper) pose.
+#### Using the DH parameter table you derived earlier, create individual transformation matrices about each joint. In addition, also generate a generalized homogeneous transform between base_link and gripper_link using only end-effector(gripper) pose.
 
 Links | alpha(i-1) | a(i-1) | d(i) | theta(i)
 --- | --- | --- | --- | ---
@@ -102,21 +75,26 @@ Links | alpha(i-1) | a(i-1) | d(i) | theta(i)
 6->EE | 0 | 0 | 0.303 | 0
 
 Using the Denavit-Hartenberg parameters we can describe the transformation matrix between two adjacent frames as:
+
 ![dh-transformation equation](./misc_images/dh-trans-equation.png)
+
 This yields the following transformation matrix:
+
 ![dh-transformation matrix](./misc_images/dh-trans-matrix.png)
 
 By chaining together the adjacent frame transformation matrices we end up with a transformation between the base-link and the end-effector
+
 ![dh-chain](./misc_images/dh-chain.png)
 
 To account for the rotational mismatch between the gazebo model of the urdf description and the forward kinematics described by the DH-parameters we have to rotate around Z by 180° and Y by -90°.
+
 ![tf-correction](./misc_images/tf-correction.png)
 
 #### Forward Kinematics implementation
 
 The code calculating the forward kinematics of the Kuka KR210 is implemented in the file kuka_arm/scripts/FK_experiment.py and was used to validate the correctness of the determined DH-parameters by comparing the resulting position of the end-effector with the simulation using the forward_kinematics environment.
 
-#### 3. Decouple Inverse Kinematics problem into Inverse Position Kinematics and inverse Orientation Kinematics; doing so derive the equations to calculate all individual joint angles.
+### Decoupling the Inverse Kinematics problems
 
 The fact that the last three revolute joints of the Kuka KR210 have the same origin and form a spherical "wrist" joint allows us to decouple the calculation into solving for the position kinematics of the wrist center and the orientation kinematics of the end effector separately.
 
@@ -128,6 +106,7 @@ For the orientation of the aforementioned vector I first decompose the quaternio
 Having determined the wrist center we can solve the position kinematics using the first three rotation angles of the Kuka KR210.
 
 For theta 1 there are two possible solutions which, we either turn the arm towards or away from the position of the wrist center.
+
 ![](./misc_images/ik_theta1.png)
 ![](./misc_images/ik_theta1_calc.png)
 
@@ -135,23 +114,31 @@ Once theta1 is determined we can start solving for theta2 and theta3. We calcula
 
 If A + C < B the wrist center is out of the range for the robot.
 Otherwise we can fit two triangles to solve for the positioning of the wrist center.
+
 ![](./misc_images/j1_wc_triangulation.png)
 
 
 From the law of cosines we can reformulate:
+
 ![](./misc_images/cosine_theorem.png)
+
 To determine alpha and beta:
+
 ![](./misc_images/alpha_beta_triangle.png)
+
 Using the DH-parameters table to determine beta-prime which is caused by the offset of Joint4:
+
 ![](./misc_images/beta_prime.png)
 
 We get the following two possible solutions for the angles theta2 and theta3.
+
 ![](./misc_images/theta2_3_equations.png)
 
 
 #### Solving rotation kinematics
 
 Once we have determined the angles for the first three revolute joints, we can calculate the resulting orientation up to the wrist using the forward kinematics described previously. This yields the rotation matrix R0_3 that can further be used to compute the rest of the rotation pipeline R3_6 by left multiplying the inverse of it.
+
 ![](./misc_images/R36_rpose.png) 
 
 Luckily the rotation matrices are orthgonal matrices which means that the inverse is simply the transpose of the matrix.
@@ -162,9 +149,11 @@ This let's us compute the numerical solution for the transformation from frame 3
 
 ![](./misc_images/R3_6_structure.png)
 ![](./misc_images/R3_6_structure_min.png)
+
 By comparing the coefficient we can derive multiple ways of computing the angles theta4, theta5 and theta6.
 
 One solution is for example:
+
 ![](./misc_images/theta456_1.png) 
 
 Another solution set for the angles can be found using:
@@ -187,10 +176,20 @@ Additionally it can calculate the resulting error with respect to the final posi
 For each incoming pose all possible and valid solutions are calculated and sorted by the resulting error in the forward kinematics. The solution with the lowest error is picked and passed back to the service caller.
 
 The following video demonstrates a sequence of pick and place tasks using the IK_server to calculate the Kuka KR210's trajectories picking and disposing cans from a shelve into a bin.
+
 [![](./misc_images/yt_demo_thumb.png)](https://www.youtube.com/watch?v=8nUhI27P51M)
+
+After completing multiple pick and place runs the bin is nicely filled.
 
 ![](./misc_images/pick_and_place_complete.png)
 
+#### Improvements
 
+In order to speed up the calculation of the inverse kinematics I replaced the used sympy transformation chains with a vastly more efficient numpy implementation. 
 
+One problem I had to tackle was that every once in a while the solution theta1 turning the Kuka arm away from the target wrist position resulted in a better pose which meant that within a trajectory the arm changed between solving two consecutive poses totally differently.
+I therefore excluded the calculation of the solution turning away from the target position.
 
+In general a necessary improvement for this task would be to pick consecutive solutions that result in a smooth trajectory rather than just picking the least erroneous pose approximation.    
+
+All in all I'm satisfied with the solution but there's definitely room for improvement.
